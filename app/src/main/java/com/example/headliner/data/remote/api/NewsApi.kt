@@ -1,10 +1,10 @@
 package com.example.headliner.data.remote.api
 
-import com.example.headliner.data.remote.dto.GNewsResponseDto
+import com.example.headliner.data.remote.dto.NewsResponse
 import retrofit2.http.GET
 import retrofit2.http.Query
 
-interface GNewsApi {
+interface NewsApi {
     @GET("top-headlines")
     suspend fun topHeadlines(
         @Query("category") category: String,
@@ -13,7 +13,7 @@ interface GNewsApi {
         @Query("max") max: Int,
         @Query("page") page: Int,
         @Query("apikey") apiKey: String
-    ): GNewsResponseDto
+    ): NewsResponse
 
     @GET("search")
     suspend fun search(
@@ -24,5 +24,5 @@ interface GNewsApi {
         @Query("max") max: Int,
         @Query("page") page: Int,
         @Query("apikey") apiKey: String
-    ): GNewsResponseDto
+    ): NewsResponse
 }
