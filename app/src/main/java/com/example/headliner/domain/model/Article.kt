@@ -1,7 +1,9 @@
 package com.example.headliner.domain.model
 
-/** A display-ready news article independent from API and database models. */
+import java.security.MessageDigest
+
 data class Article(
+    val id: String,
     val title: String,
     val description: String?,
     val content: String?,
@@ -10,9 +12,16 @@ data class Article(
     val publishedAt: String,
     val sourceName: String,
     val sourceUrl: String?
-)
+) {
+    companion object {
+        fun generateId(url: String, title: String, publishedAt: String): String {
+            val input = "$url|$title|$publishedAt"
+            val bytes = MessageDigest.getInstance("MD5").digest(input.toByteArray())
+            return bytes.joinToString("") { "%02x".format(it) }
+        }
+    }
+}
 
-/** User settings that affect API requests and typography scale. */
 data class AppSettings(
     val country: Country = Country("India", "in"),
     val language: Language = Language("English", "en")

@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.example.headliner.data.local.db.HeadlinerDao
 import com.example.headliner.data.local.db.HeadlinerDatabase
-import com.example.headliner.data.remote.api.GNewsApi
+import com.example.headliner.data.remote.api.NewsApi
 import com.example.headliner.data.repository.NewsRepositoryImpl
 import com.example.headliner.domain.repository.NewsRepository
 import dagger.Binds
@@ -42,17 +42,19 @@ object NetworkDatabaseModule {
 
     @Provides
     @Singleton
-    fun provideGNewsApi(client: OkHttpClient): GNewsApi = Retrofit.Builder()
+    fun provideNewsApi(client: OkHttpClient): NewsApi = Retrofit.Builder()
         .baseUrl("https://gnews.io/api/v4/")
         .client(client)
         .addConverterFactory(GsonConverterFactory.create())
         .build()
-        .create(GNewsApi::class.java)
+        .create(NewsApi::class.java)
 
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): HeadlinerDatabase =
-        Room.databaseBuilder(context, HeadlinerDatabase::class.java, "headliner.db").build()
+        Room.databaseBuilder(context, HeadlinerDatabase::class.java, "headliner.db")
+            .fallbackToDestructiveMigration()
+            .build()
 
     @Provides
     fun provideDao(database: HeadlinerDatabase): HeadlinerDao = database.dao()
