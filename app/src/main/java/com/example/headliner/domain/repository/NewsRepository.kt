@@ -4,6 +4,7 @@ import com.example.headliner.data.local.db.SavedArticle
 import com.example.headliner.data.local.db.SearchHistory
 import com.example.headliner.domain.model.Article
 import com.example.headliner.domain.model.NewsResult
+import com.example.headliner.domain.model.ArticleNote
 import kotlinx.coroutines.flow.Flow
 
 interface NewsRepository {
@@ -34,4 +35,12 @@ interface NewsRepository {
     suspend fun addSearchQuery(query: String)
     suspend fun deleteSearchQuery(query: String)
     suspend fun clearSearchHistory()
+
+    fun getAllNotes(): Flow<List<ArticleNote>>
+    suspend fun saveNote(note: ArticleNote)
+    suspend fun deleteNote(id: Int)
+
+    fun viewedArticleIds(): Flow<Set<String>>
+    suspend fun markArticleViewed(articleId: String)
+    suspend fun clearViewedHistory()
 }

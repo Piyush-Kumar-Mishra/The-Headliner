@@ -4,20 +4,22 @@ import com.example.headliner.BuildConfig
 import com.example.headliner.data.local.db.HeadlinerDao
 import com.example.headliner.data.local.db.SavedArticle
 import com.example.headliner.data.local.db.SearchHistory
+import com.example.headliner.data.local.db.ViewedArticle
 import com.example.headliner.data.local.db.toSavedArticle
-import com.example.headliner.data.remote.api.GNewsApi
+import com.example.headliner.data.remote.api.NewsApi
 import com.example.headliner.domain.model.Article
 import com.example.headliner.domain.model.NewsResult
 import com.example.headliner.domain.repository.NewsRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
-import retrofit2.HttpException
-import java.io.IOException
+import com.example.headliner.domain.model.ArticleNote
+import com.example.headliner.data.local.db.toEntity
+import kotlinx.coroutines.flow.map
 
 @Singleton
 class NewsRepositoryImpl @Inject constructor(
-    private val api: GNewsApi,
+    private val api: NewsApi,
     private val dao: HeadlinerDao
 ) : NewsRepository {
     override suspend fun getTopHeadlines(
@@ -26,14 +28,14 @@ class NewsRepositoryImpl @Inject constructor(
         language: String,
         max: Int,
         page: Int
-    ): NewsResult<List<Article>> = guardedNetworkCall {
+    ): NewsResult<List<Article>> = safeApiCall {
         api.topHeadlines(
             category = category,
             language = language,
             country = country,
             max = max,
             page = page,
-            apiKey = requireApiKey()
+            apiKey = getApiKey()
         ).articles.mapNotNull { it.toDomain() }
     }
 
@@ -44,7 +46,7 @@ class NewsRepositoryImpl @Inject constructor(
         to: String?,
         max: Int,
         page: Int
-    ): NewsResult<List<Article>> = guardedNetworkCall {
+    ): NewsResult<List<Article>> = safeApiCall {
         api.search(
             query = query,
             language = language,
@@ -52,7 +54,7 @@ class NewsRepositoryImpl @Inject constructor(
             to = to,
             max = max,
             page = page,
-            apiKey = requireApiKey()
+            apiKey = getApiKey()
         ).articles.mapNotNull { it.toDomain() }
     }
 
@@ -65,9 +67,9 @@ class NewsRepositoryImpl @Inject constructor(
     override suspend fun clearSavedArticles() = dao.deleteAllSavedArticles()
 
     override suspend fun addSearchQuery(query: String) {
-        val normalized = query.trim()
-        if (normalized.isNotBlank()) {
-            dao.insertSearch(SearchHistory(normalized))
+        val trimmed = query.trim()
+        if (trimmed.isNotBlank()) {
+            dao.insertSearch(SearchHistory(trimmed))
             dao.trimSearchHistory()
         }
     }
@@ -75,21 +77,38 @@ class NewsRepositoryImpl @Inject constructor(
     override suspend fun deleteSearchQuery(query: String) = dao.deleteSearch(query)
     override suspend fun clearSearchHistory() = dao.clearSearchHistory()
 
-    private suspend inline fun guardedNetworkCall(crossinline block: suspend () -> List<Article>): NewsResult<List<Article>> {
+    override fun getAllNotes(): Flow<List<ArticleNote>> = dao.getAllNotes().map { list ->
+        list.map { it.toDomain() }
+    }
+
+    override suspend fun saveNote(note: ArticleNote) {
+        dao.insertNote(note.toEntity())
+    }
+
+    override suspend fun deleteNote(id: Int) {
+        dao.deleteNote(id)
+    }
+
+
+    override fun viewedArticleIds(): Flow<Set<String>> =
+        dao.getViewedArticleIds().map { it.toSet() }
+
+    override suspend fun markArticleViewed(articleId: String) {
+        dao.insertViewedArticle(ViewedArticle(articleId = articleId))
+        dao.trimViewedArticles()
+    }
+
+    override suspend fun clearViewedHistory() = dao.clearViewedArticles()
+
+    private suspend fun safeApiCall(block: suspend () -> List<Article>): NewsResult<List<Article>> {
         if (BuildConfig.GNEWS_API_KEY.isBlank()) return NewsResult.Error("Api missing")
         return try {
             NewsResult.Success(block())
-        }
-        catch (exception: IOException) {
-            NewsResult.Error("No internet connection. Please check your network.", exception)
-        }
-        catch (exception: HttpException) {
-            NewsResult.Error("Something went wrong. Please try again.", exception)
-        }
-        catch (exception: Exception) {
-            NewsResult.Error(exception.message ?: "Something went wrong. Please try again.", exception)
+        } catch (exception: Exception) {
+            NewsResult.Error(exception.message ?: "Error occurred", exception)
         }
     }
 
-    private fun requireApiKey(): String = BuildConfig.GNEWS_API_KEY
+    private fun getApiKey(): String = BuildConfig.GNEWS_API_KEY
 }
+
