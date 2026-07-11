@@ -17,6 +17,7 @@ data class SavedArticle(
     val savedAt: Long = System.currentTimeMillis()
 ) {
     fun toDomain(): Article = Article(
+        id = Article.generateId(url, title, publishedAt),
         title = title,
         description = description,
         content = content,

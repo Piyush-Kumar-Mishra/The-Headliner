@@ -40,4 +40,26 @@ interface HeadlinerDao {
 
     @Query("DELETE FROM search_history WHERE query NOT IN (SELECT query FROM search_history ORDER BY searchedAt DESC LIMIT 10)")
     suspend fun trimSearchHistory()
+
+    @Query("SELECT * FROM article_notes ORDER BY createdAt DESC")
+    fun getAllNotes(): Flow<List<ArticleNoteEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNote(note: ArticleNoteEntity)
+
+    @Query("DELETE FROM article_notes WHERE id = :id")
+    suspend fun deleteNote(id: Int)
+
+
+    @Query("SELECT articleId FROM viewed_articles")
+    fun getViewedArticleIds(): Flow<List<String>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertViewedArticle(article: ViewedArticle)
+
+    @Query("DELETE FROM viewed_articles WHERE articleId NOT IN (SELECT articleId FROM viewed_articles ORDER BY viewedAt DESC LIMIT 100)")
+    suspend fun trimViewedArticles()
+
+    @Query("DELETE FROM viewed_articles")
+    suspend fun clearViewedArticles()
 }
